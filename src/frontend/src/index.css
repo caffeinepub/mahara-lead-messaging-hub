@@ -1,0 +1,74 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Main backgrounds */
+    --background: 0.972 0.006 256;
+    --foreground: 0.18 0.012 260;
+
+    /* Cards */
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.012 260;
+
+    /* Popovers */
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.012 260;
+
+    /* Primary = blue #2F6FE4 */
+    --primary: 0.55 0.18 260;
+    --primary-foreground: 1 0 0;
+
+    /* Secondary = pale blue */
+    --secondary: 0.95 0.04 260;
+    --secondary-foreground: 0.55 0.18 260;
+
+    /* Muted */
+    --muted: 0.96 0.006 256;
+    --muted-foreground: 0.53 0.01 260;
+
+    /* Accent */
+    --accent: 0.95 0.04 260;
+    --accent-foreground: 0.55 0.18 260;
+
+    /* Destructive */
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 1 0 0;
+
+    /* Borders */
+    --border: 0.92 0.01 256;
+    --input: 0.92 0.01 256;
+    --ring: 0.55 0.18 260;
+
+    /* Charts */
+    --chart-1: 0.55 0.18 260;
+    --chart-2: 0.6 0.15 155;
+    --chart-3: 0.65 0.17 50;
+    --chart-4: 0.7 0.15 300;
+    --chart-5: 0.65 0.2 20;
+
+    /* Sidebar - dark navy #111E2F */
+    --sidebar: 0.18 0.04 255;
+    --sidebar-foreground: 0.95 0.01 255;
+    --sidebar-primary: 0.55 0.18 260;
+    --sidebar-primary-foreground: 1 0 0;
+    --sidebar-accent: 0.25 0.05 255;
+    --sidebar-accent-foreground: 0.95 0.01 255;
+    --sidebar-border: 0.28 0.04 255;
+    --sidebar-ring: 0.55 0.18 260;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+}
