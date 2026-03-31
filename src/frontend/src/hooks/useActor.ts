@@ -17,14 +17,10 @@ export function useActor() {
         : undefined;
 
       const actor = await createActorWithConfig(actorOptions);
-      // Always initialize access control regardless of auth method.
-      // This app uses username/password sessions (not Internet Identity),
-      // so the actor is always "anonymous" from the IC perspective and
-      // must be granted access via the Caffeine admin token.
+      // Always initialize access control with the admin token,
+      // regardless of login method (Internet Identity or username/password).
       const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      if (adminToken) {
-        await actor._initializeAccessControlWithSecret(adminToken);
-      }
+      await actor._initializeAccessControlWithSecret(adminToken);
       return actor;
     },
     staleTime: Number.POSITIVE_INFINITY,
