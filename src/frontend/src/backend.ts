@@ -723,7 +723,7 @@ function from_candid_variant_n19(_uploadFile: (file: ExternalBlob) => Promise<Ui
 } | {
     qualified: null;
 }): LeadStatus {
-    return "new" in value ? LeadStatus.new : "closed" in value ? LeadStatus.closed : "contacted" in value ? LeadStatus.contacted : "qualified" in value ? LeadStatus.qualified : value;
+    return "new" in value ? LeadStatus.new_ : "closed" in value ? LeadStatus.closed : "contacted" in value ? LeadStatus.contacted : "qualified" in value ? LeadStatus.qualified : value;
 }
 function from_candid_variant_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
@@ -821,8 +821,8 @@ function to_candid_variant_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint
 } | {
     qualified: null;
 } {
-    return value == LeadStatus.new ? {
-        new_: null
+    return value == LeadStatus.new_ ? {
+        new: null
     } : value == LeadStatus.closed ? {
         closed: null
     } : value == LeadStatus.contacted ? {

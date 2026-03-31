@@ -61,10 +61,10 @@ export default {
         },
         sidebar: {
           DEFAULT: "oklch(var(--sidebar))",
-          foreground: "oklch(var(--sidebar-foreground))",
+          foreground: "oklch(var(--sidebar-foreground) / <alpha-value>)",
           primary: "oklch(var(--sidebar-primary))",
           "primary-foreground": "oklch(var(--sidebar-primary-foreground))",
-          accent: "oklch(var(--sidebar-accent))",
+          accent: "oklch(var(--sidebar-accent) / <alpha-value>)",
           "accent-foreground": "oklch(var(--sidebar-accent-foreground))",
           border: "oklch(var(--sidebar-border))",
           ring: "oklch(var(--sidebar-ring))",
