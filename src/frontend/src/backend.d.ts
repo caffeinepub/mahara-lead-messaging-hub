@@ -70,6 +70,11 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
+export interface WhatsAppResult {
+    successCount: bigint;
+    failedCount: bigint;
+    errors: Array<string>;
+}
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     bulkImportLeads(leadsCreate: Array<LeadCreate>): Promise<Array<Lead>>;
@@ -98,6 +103,7 @@ export interface backendInterface {
     listSentMessages(): Promise<Array<SentMessage>>;
     recordSentMessage(messageCreate: SentMessageCreate): Promise<SentMessage>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    sendWhatsAppMessages(leadIds: Array<LeadId>, messageBody: string): Promise<WhatsAppResult>;
     updateLead(id: LeadId, leadUpdate: LeadCreate): Promise<Lead>;
     updateMessageTemplate(id: TemplateId, templateUpdate: MessageTemplateCreate): Promise<MessageTemplate>;
 }

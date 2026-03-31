@@ -6,6 +6,7 @@ import type {
   SentMessageCreate,
   TemplateId,
 } from "../backend";
+import type { WhatsAppResult } from "../backend.d";
 import { useActor } from "./useActor";
 
 export function useLeads() {
@@ -144,5 +145,22 @@ export function useRecordSentMessage() {
     mutationFn: (data: SentMessageCreate) => actor!.recordSentMessage(data),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["sentMessages"] }),
+  });
+}
+
+export function useSendWhatsApp() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async ({
+      leadIds,
+      body,
+    }: { leadIds: LeadId[]; body: string }): Promise<WhatsAppResult> => {
+      // Cast to any: sendWhatsAppMessages is added via http-outcalls backend
+      // and may not yet appear in the auto-generated type declarations
+      return (actor as any).sendWhatsAppMessages(
+        leadIds,
+        body,
+      ) as Promise<WhatsAppResult>;
+    },
   });
 }

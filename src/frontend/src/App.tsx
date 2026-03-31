@@ -8,12 +8,13 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import Layout from "./components/Layout";
-import { useInternetIdentity } from "./hooks/useInternetIdentity";
+import { AuthContext, useAuthState } from "./hooks/useAuth";
 import ComposePage from "./pages/Compose";
 import DashboardPage from "./pages/Dashboard";
 import LeadsPage from "./pages/Leads";
 import LoginPage from "./pages/Login";
 import SentHistoryPage from "./pages/SentHistory";
+import SettingsPage from "./pages/Settings";
 import TemplatesPage from "./pages/Templates";
 
 // Root route with auth guard
@@ -22,27 +23,18 @@ const rootRoute = createRootRoute({
 });
 
 function Root() {
-  const { identity, isInitializing } = useInternetIdentity();
-
-  if (isInitializing) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!identity) {
-    return <LoginPage />;
-  }
+  const auth = useAuthState();
 
   return (
-    <Layout>
-      <Outlet />
-    </Layout>
+    <AuthContext.Provider value={auth}>
+      {auth.isAuthenticated ? (
+        <Layout>
+          <Outlet />
+        </Layout>
+      ) : (
+        <LoginPage />
+      )}
+    </AuthContext.Provider>
   );
 }
 
@@ -89,6 +81,12 @@ const sentRoute = createRoute({
   component: SentHistoryPage,
 });
 
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: SettingsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   dashboardRoute,
@@ -96,6 +94,7 @@ const routeTree = rootRoute.addChildren([
   composeRoute,
   templatesRoute,
   sentRoute,
+  settingsRoute,
 ]);
 
 const router = createRouter({ routeTree });

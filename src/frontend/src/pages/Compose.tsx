@@ -21,8 +21,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useSearch } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   FileText,
   Image,
+  Info,
   Loader2,
   Save,
   Search,
@@ -37,17 +39,25 @@ import {
   useCreateTemplate,
   useLeads,
   useRecordSentMessage,
+  useSendWhatsApp,
   useTemplates,
 } from "../hooks/useQueries";
 import { useUpload } from "../hooks/useUpload";
 
 type Attachment = { name: string; url: string };
 
+type WhatsAppStatus =
+  | { kind: "none" }
+  | { kind: "success"; count: number }
+  | { kind: "partial"; sent: number; total: number; errors: string[] }
+  | { kind: "failed"; errors: string[] };
+
 export default function ComposePage() {
   const search = useSearch({ from: "/compose" });
   const { data: leads = [] } = useLeads();
   const { data: templates = [] } = useTemplates();
   const sendMessage = useRecordSentMessage();
+  const sendWhatsApp = useSendWhatsApp();
   const createTemplate = useCreateTemplate();
   const { upload, uploading } = useUpload();
 
@@ -60,6 +70,10 @@ export default function ComposePage() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [templateTitle, setTemplateTitle] = useState("");
+  const [sandboxDismissed, setSandboxDismissed] = useState(false);
+  const [whatsAppStatus, setWhatsAppStatus] = useState<WhatsAppStatus>({
+    kind: "none",
+  });
 
   // Pre-select leads from URL search params
   useEffect(() => {
@@ -148,14 +162,57 @@ export default function ComposePage() {
       toast.error("Please enter a subject.");
       return;
     }
+
+    const leadIdArray = Array.from(selectedLeadIds);
+    const total = leadIdArray.length;
+
     try {
+      // 1. Always record the internal sent message
       await sendMessage.mutateAsync({
-        leadIds: Array.from(selectedLeadIds),
+        leadIds: leadIdArray,
         subject,
         body,
         attachmentUrls: attachments.map((a) => a.url),
       });
-      toast.success("Message sent successfully!");
+
+      // 2. Best-effort WhatsApp send
+      setWhatsAppStatus({ kind: "none" });
+      try {
+        const result = await sendWhatsApp.mutateAsync({
+          leadIds: leadIdArray,
+          body,
+        });
+        const successCount = Number(result.successCount);
+        const failedCount = Number(result.failedCount);
+
+        if (failedCount === 0) {
+          setWhatsAppStatus({ kind: "success", count: successCount });
+          toast.success(
+            `Message sent to ${successCount} recipient${successCount !== 1 ? "s" : ""} via WhatsApp`,
+          );
+        } else if (successCount > 0) {
+          setWhatsAppStatus({
+            kind: "partial",
+            sent: successCount,
+            total,
+            errors: result.errors,
+          });
+          toast.warning(
+            `Sent to ${successCount}/${total} via WhatsApp. Some failed.`,
+          );
+        } else {
+          setWhatsAppStatus({ kind: "failed", errors: result.errors });
+          toast.error("WhatsApp delivery failed for all recipients.");
+        }
+      } catch {
+        // WhatsApp failure is non-blocking
+        setWhatsAppStatus({
+          kind: "failed",
+          errors: ["WhatsApp service unavailable."],
+        });
+        toast.warning("Message saved internally but WhatsApp delivery failed.");
+      }
+
       setSubject("");
       setBody("");
       setAttachments([]);
@@ -181,6 +238,8 @@ export default function ComposePage() {
     }
   };
 
+  const isSending = sendMessage.isPending || sendWhatsApp.isPending;
+
   return (
     <div data-ocid="compose.page">
       <div className="mb-6">
@@ -189,6 +248,35 @@ export default function ComposePage() {
           Send a message to one or more leads.
         </p>
       </div>
+
+      {/* WhatsApp Sandbox Notice */}
+      {!sandboxDismissed && (
+        <div
+          className="flex items-start gap-3 mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+          data-ocid="compose.sandbox_notice.panel"
+        >
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+          <div className="flex-1">
+            <span className="font-semibold">WhatsApp Sandbox Notice: </span>
+            Your leads must first send{" "}
+            <code className="rounded bg-blue-100 px-1 font-mono text-xs">
+              join &lt;your-keyword&gt;
+            </code>{" "}
+            to <span className="font-semibold">+1 415 523 8886</span> on
+            WhatsApp before they can receive messages. This is a Twilio trial
+            requirement.
+          </div>
+          <button
+            type="button"
+            onClick={() => setSandboxDismissed(true)}
+            className="shrink-0 text-blue-400 hover:text-blue-600 transition-colors"
+            aria-label="Dismiss notice"
+            data-ocid="compose.sandbox_notice.close_button"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Recipient picker */}
@@ -390,37 +478,74 @@ export default function ComposePage() {
                 </Button>
                 <Button
                   onClick={handleSend}
-                  disabled={sendMessage.isPending || selectedLeadIds.size === 0}
+                  disabled={isSending || selectedLeadIds.size === 0}
                   data-ocid="compose.send.primary_button"
                 >
-                  {sendMessage.isPending ? (
+                  {isSending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
                       Sending...
                     </>
                   ) : (
                     <>
-                      <Send className="mr-2 h-4 w-4" /> Send Message
+                      <Send className="mr-2 h-4 w-4" /> Send via WhatsApp
                     </>
                   )}
                 </Button>
               </div>
 
-              {sendMessage.isSuccess && (
+              {/* WhatsApp result banners */}
+              {whatsAppStatus.kind === "success" && (
                 <div
-                  className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700"
+                  className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700"
                   data-ocid="compose.success_state"
                 >
-                  ✓ Message sent to {selectedLeadIds.size} recipient
-                  {selectedLeadIds.size !== 1 ? "s" : ""}
+                  <Send className="h-4 w-4 shrink-0" />
+                  Message sent to {whatsAppStatus.count} recipient
+                  {whatsAppStatus.count !== 1 ? "s" : ""} via WhatsApp
                 </div>
               )}
-              {sendMessage.isError && (
+              {whatsAppStatus.kind === "partial" && (
                 <div
-                  className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700"
+                  className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800"
+                  data-ocid="compose.success_state"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span className="font-medium">
+                      Sent to {whatsAppStatus.sent}/{whatsAppStatus.total} via
+                      WhatsApp
+                    </span>
+                  </div>
+                  {whatsAppStatus.errors.length > 0 && (
+                    <ul className="ml-6 mt-1 list-disc space-y-0.5 text-xs">
+                      {whatsAppStatus.errors.map((err, i) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: error list
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {whatsAppStatus.kind === "failed" && (
+                <div
+                  className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
                   data-ocid="compose.error_state"
                 >
-                  Failed to send. Please try again.
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span className="font-medium">
+                      WhatsApp delivery failed
+                    </span>
+                  </div>
+                  {whatsAppStatus.errors.length > 0 && (
+                    <ul className="ml-6 mt-1 list-disc space-y-0.5 text-xs">
+                      {whatsAppStatus.errors.map((err, i) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: error list
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </CardContent>

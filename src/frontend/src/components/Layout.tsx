@@ -10,17 +10,42 @@ import {
   MessageCircle,
   MessageSquarePlus,
   SendHorizonal,
+  Settings,
   Users,
 } from "lucide-react";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useUserProfile } from "../hooks/useQueries";
+import { type SectionKey, useAuth } from "../hooks/useAuth";
 
-const navItems = [
-  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/leads", label: "Leads", icon: Users },
-  { path: "/compose", label: "Compose", icon: MessageSquarePlus },
-  { path: "/templates", label: "Templates", icon: FileText },
-  { path: "/sent", label: "Sent History", icon: SendHorizonal },
+const allNavItems: {
+  path: string;
+  label: string;
+  icon: React.ElementType;
+  section: SectionKey | null;
+}[] = [
+  {
+    path: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    section: "dashboard",
+  },
+  { path: "/leads", label: "Leads", icon: Users, section: "leads" },
+  {
+    path: "/compose",
+    label: "Compose",
+    icon: MessageSquarePlus,
+    section: "compose",
+  },
+  {
+    path: "/templates",
+    label: "Templates",
+    icon: FileText,
+    section: "templates",
+  },
+  {
+    path: "/sent",
+    label: "Sent History",
+    icon: SendHorizonal,
+    section: "sent",
+  },
 ];
 
 const breadcrumbMap: Record<string, string> = {
@@ -29,22 +54,21 @@ const breadcrumbMap: Record<string, string> = {
   "/compose": "Compose Message",
   "/templates": "Templates",
   "/sent": "Sent History",
+  "/settings": "Settings",
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { clear } = useInternetIdentity();
-  const { data: profile } = useUserProfile();
+  const { currentUser, logout, hasPermission } = useAuth();
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
   const pageTitle = breadcrumbMap[pathname] ?? "Mahara";
 
-  const initials = profile?.name
-    ? profile.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
+  const visibleNav = allNavItems.filter(({ section }) =>
+    section ? hasPermission(section) : true,
+  );
+
+  const initials = currentUser?.username
+    ? currentUser.username.slice(0, 2).toUpperCase()
     : "MH";
 
   return (
@@ -73,10 +97,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sidebar-foreground text-sm font-medium truncate">
-              {profile?.name ?? "User"}
+              {currentUser?.username ?? "User"}
             </p>
             <p className="text-xs" style={{ color: "oklch(0.65 0.03 255)" }}>
-              Active
+              {currentUser?.role === "admin" ? "Administrator" : "User"}
             </p>
           </div>
         </div>
@@ -86,13 +110,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           className="flex-1 px-3 py-4 space-y-1"
           aria-label="Main navigation"
         >
-          {navItems.map(({ path, label, icon: Icon }) => {
+          {visibleNav.map(({ path, label, icon: Icon }) => {
             const isActive = pathname === path;
             return (
               <Link
                 key={path}
                 to={path}
-                data-ocid={`nav.${label.toLowerCase().replace(" ", "_")}.link`}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                   isActive
@@ -107,13 +130,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="px-3 pb-4">
+        {/* Settings + Logout */}
+        <div className="px-3 pb-4 space-y-1">
+          <Link
+            to="/settings"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full",
+              pathname === "/settings"
+                ? "bg-sidebar-accent text-sidebar-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+            )}
+          >
+            <Settings className="w-4 h-4 shrink-0" />
+            Settings
+          </Link>
           <Button
             variant="ghost"
             size="sm"
-            onClick={clear}
-            data-ocid="nav.logout.button"
+            onClick={logout}
             className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/60"
           >
             <LogOut className="w-4 h-4" />
@@ -124,18 +158,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main area */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Top header */}
         <header className="flex items-center gap-2 px-6 py-4 bg-white border-b border-border shrink-0">
           <ChevronRight className="w-4 h-4 text-muted-foreground" />
           <h1 className="text-sm font-semibold text-foreground">{pageTitle}</h1>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-background p-6">
           {children}
         </main>
 
-        {/* Footer */}
         <footer className="shrink-0 bg-white border-t border-border px-6 py-2.5 text-center">
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()}. Built with love using{" "}

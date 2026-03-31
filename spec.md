@@ -1,27 +1,25 @@
 # Mahara Lead Messaging Hub
 
 ## Current State
-New project. Empty backend and default frontend scaffold.
+Full lead messaging hub with leads, compose, templates, sent history, user management, and settings. Messages are only stored internally (no real sending).
 
 ## Requested Changes (Diff)
 
 ### Add
-- Lead management: create, view, edit, delete leads with fields: name, phone, email, tags, notes, status (new/contacted/qualified/closed)
-- CSV/Excel import for leads (parse CSV in frontend, bulk-create via backend)
-- Message composer: compose messages with text body, attach images/videos/PDFs (via blob-storage)
-- Template library: save, view, and reuse message templates (title + body + optional attachments)
-- Message sending: send a message to one or multiple selected leads (stored as sent message records)
-- Sent messages history: per-lead view of sent messages
-- Authorization: login-gated admin interface
-- Navigation sidebar: Leads, Compose, Templates, Sent History
+- Backend `sendWhatsAppMessages` function: accepts leadIds and message body, calls Twilio WhatsApp API for each lead's phone number, returns success/error counts
+- Twilio credentials stored as constants in backend: Account SID, Auth Token (base64 encoded), sender number
+- Frontend sandbox opt-in reminder banner on Compose page
+- Frontend WhatsApp send status (success/failure per recipient) shown after Send
 
 ### Modify
-- None (new project)
+- `handleSend` in Compose.tsx: after recording the message, also call `sendWhatsAppMessages` for the selected leads; show combined result
+- Send button: show WhatsApp delivery results alongside the existing success state
 
 ### Remove
-- None
+- Nothing removed
 
 ## Implementation Plan
-1. Backend: Lead CRUD, Template CRUD, SentMessage records, bulk lead import endpoint, send message endpoint (stores record per recipient)
-2. Components: authorization, blob-storage
-3. Frontend: sidebar layout, Leads page (list + import + CRUD), Compose page (recipient picker + editor + file attach), Templates page (list + create + apply to composer), Sent History page
+1. Select `http-outcalls` Caffeine component
+2. Update `main.mo`: add `sendWhatsAppMessages(leadIds, body)` function using IC HTTP outcalls to POST to Twilio API with Basic auth
+3. Update `backend.d.ts` to expose new function signature
+4. Update `Compose.tsx`: add sandbox opt-in info banner, call `sendWhatsAppMessages` on send, display WhatsApp delivery results
