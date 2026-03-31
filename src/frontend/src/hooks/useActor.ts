@@ -12,15 +12,24 @@ export function useActor() {
   const actorQuery = useQuery<backendInterface>({
     queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
     queryFn: async () => {
+      // Create actor with identity if available (Internet Identity),
+      // otherwise create anonymous actor for username/password login
       const actorOptions = identity
         ? { agentOptions: { identity } }
         : undefined;
 
       const actor = await createActorWithConfig(actorOptions);
-      // Always initialize access control with the admin token,
-      // regardless of login method (Internet Identity or username/password).
+
+      // ALWAYS call _initializeAccessControlWithSecret regardless of login method.
+      // For username/password login, the caller is anonymous but the backend
+      // now allows anonymous principals to register when a valid token is supplied.
       const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      await actor._initializeAccessControlWithSecret(adminToken);
+      try {
+        await actor._initializeAccessControlWithSecret(adminToken);
+      } catch (e) {
+        console.warn("Access control initialization failed:", e);
+      }
+
       return actor;
     },
     staleTime: Number.POSITIVE_INFINITY,
