@@ -12,27 +12,22 @@ export function useActor() {
   const actorQuery = useQuery<backendInterface>({
     queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
     queryFn: async () => {
-      const isAuthenticated = !!identity;
-
-      if (!isAuthenticated) {
-        // Return anonymous actor if not authenticated
-        return await createActorWithConfig();
-      }
-
-      const actorOptions = {
-        agentOptions: {
-          identity,
-        },
-      };
+      const actorOptions = identity
+        ? { agentOptions: { identity } }
+        : undefined;
 
       const actor = await createActorWithConfig(actorOptions);
+      // Always initialize access control regardless of auth method.
+      // This app uses username/password sessions (not Internet Identity),
+      // so the actor is always "anonymous" from the IC perspective and
+      // must be granted access via the Caffeine admin token.
       const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      await actor._initializeAccessControlWithSecret(adminToken);
+      if (adminToken) {
+        await actor._initializeAccessControlWithSecret(adminToken);
+      }
       return actor;
     },
-    // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
-    // This will cause the actor to be recreated when the identity changes
     enabled: true,
   });
 
