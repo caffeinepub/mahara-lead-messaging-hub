@@ -21,14 +21,11 @@ module {
     };
   };
 
-  // Register a caller. Anonymous callers are allowed so that apps using
-  // custom username/password login (non-Internet-Identity) can still
-  // authenticate via the Caffeine admin token.
+  // First principal that calls this function becomes admin, all other principals become users.
   public func initialize(state : AccessControlState, caller : Principal, adminToken : Text, userProvidedToken : Text) {
+    if (caller.isAnonymous()) { return };
     switch (state.userRoles.get(caller)) {
-      case (?_) {
-        // Already registered – nothing to do
-      };
+      case (?_) {};
       case (null) {
         if (not state.adminAssigned and userProvidedToken == adminToken) {
           state.userRoles.add(caller, #admin);
@@ -41,11 +38,11 @@ module {
   };
 
   public func getUserRole(state : AccessControlState, caller : Principal) : UserRole {
+    if (caller.isAnonymous()) { return #guest };
     switch (state.userRoles.get(caller)) {
       case (?role) { role };
       case (null) {
-        // Unregistered callers (including anonymous) are guests
-        #guest;
+        Runtime.trap("User is not registered");
       };
     };
   };

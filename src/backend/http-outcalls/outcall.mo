@@ -25,6 +25,11 @@ module {
     value : Text;
   };
 
+  public type HttpResponse = {
+    status : Nat;
+    body : Text;
+  };
+
   let httpRequestCycles = 231_000_000_000;
 
   public func httpGetRequest(url : Text, extraHeaders : [Header], transform : Transform) : async Text {
@@ -73,6 +78,35 @@ module {
     switch (httpResponse.body.decodeUtf8()) {
       case (null) { Runtime.trap("empty HTTP response") };
       case (?decodedResponse) { decodedResponse };
+    };
+  };
+
+  public func httpPostRequestFull(url : Text, extraHeaders : [Header], body : Text, transform : Transform) : async HttpResponse {
+    let headers = extraHeaders.concat([
+      { name = "User-Agent"; value = "caffeine.ai" },
+      { name = "Idempotency-Key"; value = "Time-" # Time.now().toText() },
+    ]);
+    let requestBody = body.encodeUtf8();
+    let httpRequest : IC.http_request_args = {
+      url;
+      max_response_bytes = null;
+      headers;
+      body = ?requestBody;
+      method = #post;
+      transform = ?{
+        function = transform;
+        context = Blob.fromArray([]);
+      };
+      is_replicated = ?false;
+    };
+    let httpResponse = await (with cycles = httpRequestCycles) IC.http_request(httpRequest);
+    let responseBody = switch (httpResponse.body.decodeUtf8()) {
+      case (null) { "" };
+      case (?decoded) { decoded };
+    };
+    {
+      status = httpResponse.status;
+      body = responseBody;
     };
   };
 };
